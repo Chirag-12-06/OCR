@@ -1,19 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import easyocr
 
 from .preprocess import load_image, normalize_for_ocr
-
-
-@dataclass(slots=True)
-class OCRToken:
-    bbox: list[list[float]]
-    text: str
-    confidence: float
+from .types import OCRToken
 
 
 class ReceiptOCR:

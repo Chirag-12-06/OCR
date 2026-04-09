@@ -1,5 +1,5 @@
 from receipt_ocr.fields import extract_receipt_fields
-from receipt_ocr.ocr_engine import OCRToken
+from receipt_ocr.types import OCRToken
 
 
 def test_extract_receipt_fields_basic_totals() -> None:
@@ -18,14 +18,9 @@ def test_extract_receipt_fields_basic_totals() -> None:
     fields = extract_receipt_fields(tokens)
 
     assert fields.merchant_name == "Spice Route Bistro"
-    assert fields.bill_number == "1042"
-    assert fields.table_number == "A12"
     assert fields.invoice_date == "2026-04-01"
-    assert fields.invoice_time == "13:44"
-    assert fields.service_charge == 20.0
     assert fields.tax == 21.0
     assert fields.total == 401.0
-    assert fields.payment_method == "UPI"
     assert fields.line_items[0].name == "Masala Dosa"
     assert fields.line_items[0].quantity == 2.0
     assert fields.line_items[0].unit_price == 180.0

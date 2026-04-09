@@ -38,9 +38,7 @@ def main() -> None:
         engine = ReceiptOCR(languages=args.lang, gpu=args.gpu)
         tokens = engine.read(args.image)
         fields = extract_receipt_fields(tokens)
-        payload = fields.to_dict()
-        payload["tokens"] = engine.to_dict(tokens)
-        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        print(json.dumps(fields.to_dict(), indent=2, ensure_ascii=False))
         return
 
     if args.command == "prepare-cord":

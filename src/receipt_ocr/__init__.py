@@ -1,6 +1,6 @@
 """Receipt OCR package."""
 
 from .fields import extract_receipt_fields
-from .ocr_engine import ReceiptOCR
+from .types import OCRToken
 
-__all__ = ["ReceiptOCR", "extract_receipt_fields"]
+__all__ = ["OCRToken", "extract_receipt_fields"]

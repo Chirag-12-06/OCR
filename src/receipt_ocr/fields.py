@@ -4,7 +4,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 import re
 
-from .ocr_engine import OCRToken
+from .types import OCRToken
 
 AMOUNT_RE = re.compile(r"(?<!\d)(\d{1,6}(?:[.,]\d{2})?)(?!\d)")
 DATE_PATTERNS = [
@@ -28,19 +28,10 @@ class LineItem:
 @dataclass(slots=True)
 class ReceiptFields:
     merchant_name: str | None
-    bill_number: str | None
-    table_number: str | None
-    order_number: str | None
     invoice_date: str | None
-    invoice_time: str | None
-    subtotal: float | None
     tax: float | None
-    service_charge: float | None
     total: float | None
-    currency: str | None
-    payment_method: str | None
     line_items: list[LineItem]
-    raw_text: str
 
     def to_dict(self) -> dict:
         payload = asdict(self)
@@ -50,38 +41,20 @@ class ReceiptFields:
 
 def extract_receipt_fields(tokens: list[OCRToken]) -> ReceiptFields:
     lines = [token.text for token in tokens]
-    raw_text = "\n".join(lines)
     lowered = [line.lower() for line in lines]
 
     merchant_name = lines[0] if lines else None
-    bill_number = _extract_labeled_text(lines, ["bill no", "bill #", "invoice no", "check no", "receipt no"])
-    table_number = _extract_labeled_text(lines, ["table", "tbl"])
-    order_number = _extract_labeled_text(lines, ["order no", "order #", "token no", "kot"])
     invoice_date = _extract_date(lines)
-    invoice_time = _extract_time(lines)
-    subtotal = _extract_labeled_amount(lowered, lines, ["subtotal", "sub total", "food total", "amount"])
     tax = _extract_labeled_amount(lowered, lines, ["tax", "gst", "vat", "cgst", "sgst"])
-    service_charge = _extract_labeled_amount(lowered, lines, ["service charge", "service tax", "svc"])
     total = _extract_labeled_amount(lowered, lines, ["grand total", "net total", "total"])
-    currency = _detect_currency(raw_text)
-    payment_method = _extract_payment_method(lowered)
     line_items = _extract_line_items(lines)
 
     return ReceiptFields(
         merchant_name=merchant_name,
-        bill_number=bill_number,
-        table_number=table_number,
-        order_number=order_number,
         invoice_date=invoice_date,
-        invoice_time=invoice_time,
-        subtotal=subtotal,
         tax=tax,
-        service_charge=service_charge,
         total=total,
-        currency=currency,
-        payment_method=payment_method,
         line_items=line_items,
-        raw_text=raw_text,
     )
 
 
@@ -105,23 +78,6 @@ def _extract_amounts(text: str) -> list[float]:
     return values
 
 
-def _extract_labeled_text(lines: list[str], labels: list[str]) -> str | None:
-    for line in lines:
-        lower = line.lower()
-        if not any(label in lower for label in labels):
-            continue
-
-        parts = re.split(r"\s*[:#-]\s*", line, maxsplit=1)
-        if len(parts) == 2 and parts[1].strip():
-            return parts[1].strip()
-
-        for label in labels:
-            cleaned = re.sub(re.escape(label), "", line, flags=re.IGNORECASE).strip(" :#-")
-            if cleaned:
-                return cleaned
-    return None
-
-
 def _extract_date(lines: list[str]) -> str | None:
     for line in lines:
         for chunk in re.split(r"\s+", line):
@@ -134,50 +90,12 @@ def _extract_date(lines: list[str]) -> str | None:
     return None
 
 
-def _extract_time(lines: list[str]) -> str | None:
-    for line in lines:
-        match = TIME_RE.search(line)
-        if match:
-            return match.group(1)
-    return None
-
-
-def _detect_currency(text: str) -> str | None:
-    markers = {
-        "INR": ["rs", "inr", "₹"],
-        "USD": ["usd", "$"],
-        "EUR": ["eur", "€"],
-        "GBP": ["gbp", "£"],
-    }
-    lowered = text.lower()
-    for currency, hints in markers.items():
-        if any(hint in lowered for hint in hints):
-            return currency
-    return None
-
-
-def _extract_payment_method(lowered_lines: list[str]) -> str | None:
-    payment_markers = {
-        "upi": "UPI",
-        "gpay": "UPI",
-        "phonepe": "UPI",
-        "paytm": "UPI",
-        "visa": "CARD",
-        "mastercard": "CARD",
-        "card": "CARD",
-        "cash": "CASH",
-        "wallet": "WALLET",
-    }
-    for line in lowered_lines:
-        for marker, value in payment_markers.items():
-            if marker in line:
-                return value
-    return None
-
-
 def _extract_line_items(lines: list[str]) -> list[LineItem]:
     items: list[LineItem] = []
     stop_markers = (
+        "bill",
+        "invoice",
+        "receipt",
         "subtotal",
         "tax",
         "total",
@@ -188,6 +106,8 @@ def _extract_line_items(lines: list[str]) -> list[LineItem]:
         "table",
         "order",
         "kot",
+        "date",
+        "time",
         "server",
         "waiter",
         "guest",
@@ -200,7 +120,7 @@ def _extract_line_items(lines: list[str]) -> list[LineItem]:
         amounts = _extract_amounts(line)
         if not amounts:
             continue
-        name = AMOUNT_RE.sub("", line).strip(" -xX")
+        name = _clean_item_name(line)
         if len(name) < 2:
             continue
         quantity = None
@@ -220,3 +140,12 @@ def _extract_line_items(lines: list[str]) -> list[LineItem]:
             )
         )
     return items
+
+
+def _clean_item_name(line: str) -> str:
+    name = AMOUNT_RE.sub(" ", line)
+    name = re.sub(r"\b\d+(?:\.\d+)?\s*x\b", " ", name, flags=re.IGNORECASE)
+    name = re.sub(r"\b(?:qty|pcs|pc|plate|plates)\b", " ", name, flags=re.IGNORECASE)
+    name = re.sub(r"[^A-Za-z&()'/+\- ]+", " ", name)
+    name = re.sub(r"\s+", " ", name).strip(" -xX:/")
+    return name

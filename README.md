@@ -1,11 +1,11 @@
 # Receipt OCR Starter
 
-This project is a starter pipeline for extracting structured details from restaurant and food-service bills.
+This project is a starter pipeline for extracting restaurant name, bill date, line items, taxes, and totals from food-service bills.
 
 It includes:
 
 - EasyOCR-based text detection and recognition
-- restaurant bill parsing for bill number, table, order references, totals, taxes, service charge, payment method, and line items
+- restaurant bill parsing for restaurant name, bill date, item prices, tax, and total
 - CORD dataset preparation utilities for training or evaluation
 
 ## 1. Install
@@ -27,17 +27,9 @@ Example output:
 ```json
 {
   "merchant_name": "Spice Route Bistro",
-  "bill_number": "1042",
-  "table_number": "A12",
-  "order_number": null,
   "invoice_date": "2026-04-01",
-  "invoice_time": "13:44",
-  "subtotal": 420.0,
   "tax": 21.0,
-  "service_charge": 20.0,
   "total": 441.0,
-  "currency": "INR",
-  "payment_method": "UPI",
   "line_items": [
     {
       "name": "Masala Dosa",
@@ -45,8 +37,7 @@ Example output:
       "unit_price": 180.0,
       "total_price": 360.0
     }
-  ],
-  "raw_text": "..."
+  ]
 }
 ```
 
