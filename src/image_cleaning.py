@@ -28,35 +28,43 @@ def image_cleaning(input_folder, output_folder):
 
                 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-                # Choose ONE denoising
-                denoised = cv2.fastNlMeansDenoising(gray, None, 30, 7, 21)
+                # Determine if image is a digital screenshot/scan or a camera photo
+                hist = cv2.calcHist([gray], [0], None, [256], [0, 256])
+                max_peak = np.max(hist)
+                total_pixels = gray.size
+                peak_val = np.argmax(hist)
+                neighborhood_sum = np.sum(hist[max(0, peak_val-2):min(256, peak_val+3)])
+                neighborhood_ratio = neighborhood_sum / total_pixels
 
-                # Choose threshold dynamically
-                if np.std(gray) < 50:
-                    _, thresh = cv2.threshold(
-                        denoised, 0, 255,
-                        cv2.THRESH_BINARY + cv2.THRESH_OTSU
-                    )
+                is_screenshot = neighborhood_ratio > 0.5
+
+                if is_screenshot:
+                    # Digital screenshot: Resize 2.5x, very mild denoise (h=3)
+                    gray_resized = cv2.resize(gray, None, fx=2.5, fy=2.5, interpolation=cv2.INTER_CUBIC)
+                    denoised = cv2.fastNlMeansDenoising(gray_resized, None, 3, 7, 21)
                 else:
-                    thresh = cv2.adaptiveThreshold(
-                        denoised, 255,
-                        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                        cv2.THRESH_BINARY,
-                        11, 2
-                    )
+                    # Camera photo: Resize 2.0x, mild denoise (h=5)
+                    gray_resized = cv2.resize(gray, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
+                    denoised = cv2.fastNlMeansDenoising(gray_resized, None, 5, 7, 21)
 
-                # Optional dilation
-                if np.mean(thresh) < 127:
-                    thresh = cv2.dilate(thresh, np.ones((2,2), np.uint8), iterations=1)
+                # Sharpening
+                kernel = np.array([
+                    [-1,-1,-1],
+                    [-1, 9,-1],
+                    [-1,-1,-1]
+                ])
+                sharp = cv2.filter2D(denoised, -1, kernel)
 
-                # Ensure correct polarity
-                if np.mean(thresh) > 127:
+                # Global Otsu Thresholding works perfectly after sharpening and proper scaling
+                _, thresh = cv2.threshold(sharp, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+                black_pixels = np.sum(thresh == 0)
+                white_pixels = np.sum(thresh == 255)
+
+                if black_pixels > white_pixels:
                     thresh = cv2.bitwise_not(thresh)
 
-                # Resize
-                resized = cv2.resize(thresh, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
-
-                cv2.imwrite(output_path, resized)
+                cv2.imwrite(output_path, thresh)
                 print(f"Processed: {filename}")
 
             except Exception as e:

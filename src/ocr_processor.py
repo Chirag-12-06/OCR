@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-
+import re
 import cv2
 import pytesseract
 
@@ -29,15 +29,17 @@ def ocr_processor(input_folder, output_file):
                     print(f"Failed to load {filename}")
                     continue
 
-                config = "--oem 3 --psm 4"
+                config = r'--oem 3 --psm 6'
                 text = pytesseract.image_to_string(img, config=config)
+                # Replace common rupee OCR mistakes
+                text = re.sub(r'(?<=\s)[Z$](?=\d)', 'INR ', text)
 
-                print("*" * 20)
-                print(text.strip())
-                print("*" * 20)
+                # Clean accidental duplicate digits before prices
+                text = re.sub(r'INR\s*2(\d{2,})', r'INR \1', text)
 
                 extracted_text += f"Extracted text from {filename}:\n{text.strip()}\n\n"
 
+                
             except Exception as e:
                 print(f"Problem processing {filename}: {e}")
 
