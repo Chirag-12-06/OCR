@@ -1,6 +1,4 @@
-inputs/bills/
-inputs/bills_cleaned/
-inputs/bills_cleaned.txt
+inputs/
 outputs/
 
 .vscode/
