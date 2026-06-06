@@ -14,25 +14,23 @@ pytesseract.pytesseract.tesseract_cmd = (
 )
 
 
-def clean_ocr_text(text: str) -> str:
-    """
-    Fix common OCR mistakes.
-    """
+def clean_ocr_text(text):
 
+    # Z499, %499, $499 → INR 499
     text = re.sub(
-        r'(?<=\s)[Z$](?=\d)',
+        r'(?<!\w)[Z%$£€](?=\d)',
         'INR ',
         text
     )
 
+    # 2499 → INR 499 (only for 4+ digit amounts)
     text = re.sub(
-        r'INR\s*2(\d{2,})',
+        r'(?<!\d)2(\d{3,})(?!\d)',
         r'INR \1',
         text
     )
 
     return text
-
 
 def calculate_confidence(data: dict) -> float:
     """
@@ -59,7 +57,6 @@ def calculate_confidence(data: dict) -> float:
         2
     )
 
-
 def extract_text(image_path: Path) -> dict:
     """
     OCR a single image and return text + confidence.
@@ -72,14 +69,25 @@ def extract_text(image_path: Path) -> dict:
             f"Failed to load image: {image_path}"
         )
 
-    config = r'--oem 3 --psm 4'
-
+    config = (
+        '--oem 3 '
+        '--psm 4 '
+        '-c tessedit_char_whitelist='
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        'abcdefghijklmnopqrstuvwxyz'
+        '0123456789'
+        '.,:/%-#()% '
+    )
     text = pytesseract.image_to_string(
         img,
         config=config
     )
 
     text = clean_ocr_text(text)
+    
+    text = re.sub(r'[-_=]{3,}', '', text)
+
+    text = re.sub(r'\n\s*\n+', '\n\n', text)
 
     data = pytesseract.image_to_data(
         img,
@@ -94,10 +102,9 @@ def extract_text(image_path: Path) -> dict:
         "confidence": confidence
     }
 
-
-def ocr(input_folder: Path):
+def ocr(input_folder: Path, output_file: Path):
     """
-    OCR all images in a folder.
+    OCR all images in a folder and save extracted text.
     """
 
     results = []
@@ -108,12 +115,14 @@ def ocr(input_folder: Path):
         ".png"
     )
 
+    extracted_text = ""
+
     for filename in os.listdir(input_folder):
 
         if not filename.lower().endswith(valid_extensions):
             continue
 
-        image_path = Path(input_folder) / filename
+        image_path = input_folder / filename
 
         try:
 
@@ -130,6 +139,11 @@ def ocr(input_folder: Path):
                 f"{result['confidence']}%"
             )
 
+            extracted_text += (
+                f"Extracted text from {filename}:\n"
+                f"{result['text'].strip()}\n\n"
+            )
+
         except Exception as e:
 
             print(
@@ -137,24 +151,16 @@ def ocr(input_folder: Path):
                 f"{filename}: {e}"
             )
 
+    # Create parent directory if needed
+    output_file.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    # Save OCR text
+    with open(output_file, "w", encoding="utf-8") as file:
+        file.write(extracted_text)
+
+    print(f"OCR text written to {output_file}")
+
     return results
-
-
-if __name__ == "__main__":
-
-    results = ocr(INPUT_FOLDER)
-
-    for result in results:
-
-        print("\n" + "=" * 60)
-
-        print(
-            f"File: {result['filename']}"
-        )
-
-        print(
-            f"Confidence: "
-            f"{result['confidence']}%"
-        )
-
-        print(result["text"])

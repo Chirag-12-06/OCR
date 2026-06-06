@@ -4,17 +4,9 @@ import json
 import os
 import re
 import time
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
-from pathlib import Path
-
 import requests
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
-
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-INPUT_FILE = PROJECT_ROOT / "inputs" / "bills_cleaned.txt"
-OUTPUT_DIR = PROJECT_ROOT / "outputs"
-OUTPUT_CSV = OUTPUT_DIR / "expenses_table.csv"
-OUTPUT_JSON = OUTPUT_DIR / "expenses_table.json"
 OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
 DEFAULT_MODEL = "gpt-4o-mini"
 DEFAULT_MAX_RETRIES = 3
@@ -482,7 +474,7 @@ def write_csv(data, output_csv):
                 )
 
 
-def main():
+def extract(INPUT_FILE, OUTPUT_DIR, OUTPUT_CSV, OUTPUT_JSON):
     parser = argparse.ArgumentParser(
         description="Use the OpenAI API to convert OCR receipt text into an expense table."
     )
@@ -517,7 +509,3 @@ def main():
 
     print(f"Wrote {args.csv}")
     print(f"Wrote {args.json}")
-
-
-if __name__ == "__main__":
-    main()

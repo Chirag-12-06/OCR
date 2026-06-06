@@ -1,26 +1,6 @@
 import os
-from pathlib import Path
-
 import cv2
-import numpy as np
-
-
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-INPUT_FOLDER = PROJECT_ROOT / "inputs" / "raw"
-OUTPUT_FOLDER = PROJECT_ROOT / "inputs" / "cleaned"
-DEBUG_FOLDER = PROJECT_ROOT / "inputs" / "debug"
-
-
-def detect_receipt_contour(img):
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    blur = cv2.GaussianBlur(gray, (5, 5), 0)
-
-    edges = cv2.Canny(blur, 75, 200)
-
-    # cv2.imwrite(
-    # str(DEBUG_FOLDER / f"{filename}_edges.jpg"),
-    # edges)
+from pathlib import Path
 
 def crop_receipt(img):
 
@@ -43,9 +23,6 @@ def crop_receipt(img):
 
     return cropped
 
-def deskew_receipt():
-    ...
-
 def resize_receipt(img):
     return cv2.resize(
         img,
@@ -54,7 +31,6 @@ def resize_receipt(img):
         fy=2,
         interpolation=cv2.INTER_CUBIC
     )
-
 
 def enhance_receipt(img):
 
@@ -71,7 +47,7 @@ def enhance_receipt(img):
 
     return normalized
 
-def image_cleaning(input_folder, output_folder):
+def image_cleaning(project_root,input_folder, output_folder):
     validate_Extensions = (".jpg", ".jpeg", ".png")
 
     for filename in os.listdir(input_folder):
@@ -88,7 +64,7 @@ def image_cleaning(input_folder, output_folder):
                     print(f"Failed to load {filename}")
                     continue
 
-                debug_path = PROJECT_ROOT / "inputs" / "debug"
+                debug_path = project_root / "inputs" / "debug"
 
                 # Step 1
                 resized = resize_receipt(img)
@@ -132,5 +108,3 @@ def image_cleaning(input_folder, output_folder):
             except Exception as e:
                 print(f"Problem processing {filename}: {e}")
 
-if __name__ == "__main__":
-    image_cleaning(INPUT_FOLDER, OUTPUT_FOLDER)
