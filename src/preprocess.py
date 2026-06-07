@@ -2,27 +2,6 @@ import os
 import cv2
 from pathlib import Path
 
-def crop_receipt(img):
-
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    _, thresh = cv2.threshold(
-        gray,
-        180,
-        255,
-        cv2.THRESH_BINARY)
-
-    coords = cv2.findNonZero(thresh)
-
-    if coords is None:
-        return img
-
-    x, y, w, h = cv2.boundingRect(coords)
-
-    cropped = img[y:y+h, x:x+w]
-
-    return cropped
-
 def resize_receipt(img):
     return cv2.resize(
         img,

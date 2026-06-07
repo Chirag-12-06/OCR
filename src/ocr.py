@@ -1,13 +1,9 @@
 import os
 import re
 from pathlib import Path
-
 import cv2
 import pytesseract
 
-
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-INPUT_FOLDER = PROJECT_ROOT / "inputs" / "cleaned"
 
 pytesseract.pytesseract.tesseract_cmd = (
     r"C:\Program Files\Tesseract-OCR\tesseract.exe"
